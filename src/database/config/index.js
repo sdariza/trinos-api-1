@@ -1,8 +1,9 @@
-const { TEST_DATABASE_URL } = require('../../config');
-
 module.exports = {
+  development: {
+    dialect: 'postgres',
+    use_env_variable: 'DATABASE_URL',
+  },
   test: {
-    url: TEST_DATABASE_URL,
     dialect: 'sqlite',
   },
 };
