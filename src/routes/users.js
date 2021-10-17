@@ -10,11 +10,13 @@ const {
   loginUser,
 } = require('../controllers/users');
 
+const { authMiddleware } = require('../middlewares/authMiddleware');
+
 router.post('/', createUser);
 
 router.get('/:id', getUserById);
-router.put('/:id', updateUser);
-router.delete('/:id', deactivateUser);
+router.put('/:id', authMiddleware, updateUser);
+router.delete('/:id', authMiddleware, deactivateUser);
 
 router.post('/login', loginUser);
 

@@ -3,6 +3,7 @@ const request = require('supertest');
 const app = require('../app');
 const database = require('../src/database');
 const { User } = require('../src/database/models');
+const { generateAccessToken } = require('../src/services/jwt');
 
 const USERS_PATH = '/users';
 
@@ -20,9 +21,13 @@ const NEW_USER = {
 };
 
 describe('Users routes', () => {
+  let firstUserAccessToken;
   beforeAll(async () => {
     await database.init();
-    await User.create(FIRST_USER);
+
+    const firstUser = await User.create(FIRST_USER);
+    firstUserAccessToken = generateAccessToken(firstUser.id);
+
     await User.create(Object.assign(FIRST_USER, { active: false }));
   });
 
@@ -113,7 +118,10 @@ describe('Users routes', () => {
       email: 'new_email@test.com',
       name: 'New name',
     };
-    const response = await request(app).put(`${USERS_PATH}/${USER_ID}`).send(payload);
+    const response = await request(app)
+      .put(`${USERS_PATH}/${USER_ID}`)
+      .set('Authorization', `bearer ${firstUserAccessToken}`)
+      .send(payload);
 
     expect(response.statusCode).toBe(200);
     expect(response.body.status).toBe('success');
@@ -136,7 +144,10 @@ describe('Users routes', () => {
       email: 'new_email@test.com',
       name: 'New name',
     };
-    const response = await request(app).put(`${USERS_PATH}/${USER_ID}`).send(payload);
+    const response = await request(app)
+      .put(`${USERS_PATH}/${USER_ID}`)
+      .set('Authorization', `bearer ${firstUserAccessToken}`)
+      .send(payload);
 
     expect(response.statusCode).toBe(400);
     expect(response.body.status).toBe('User not found');
@@ -147,7 +158,10 @@ describe('Users routes', () => {
     const payload = {
       password: '12345',
     };
-    const response = await request(app).put(`${USERS_PATH}/${USER_ID}`).send(payload);
+    const response = await request(app)
+      .put(`${USERS_PATH}/${USER_ID}`)
+      .set('Authorization', `bearer ${firstUserAccessToken}`)
+      .send(payload);
 
     expect(response.statusCode).toBe(400);
     expect(response.body.status).toBe('Payload can only contain username, email or name');
@@ -155,7 +169,9 @@ describe('Users routes', () => {
 
   it('Should deactivate user', async () => {
     const USER_ID = 1;
-    const response = await request(app).delete(`${USERS_PATH}/${USER_ID}`);
+    const response = await request(app)
+      .delete(`${USERS_PATH}/${USER_ID}`)
+      .set('Authorization', `bearer ${firstUserAccessToken}`);
 
     expect(response.statusCode).toBe(200);
     expect(response.body.status).toBe('success');
@@ -167,7 +183,9 @@ describe('Users routes', () => {
 
   it('Should return bad request on deactivate user when does not exist', async () => {
     const USER_ID = 0;
-    const response = await request(app).delete(`${USERS_PATH}/${USER_ID}`);
+    const response = await request(app)
+      .delete(`${USERS_PATH}/${USER_ID}`)
+      .set('Authorization', `bearer ${firstUserAccessToken}`);
 
     expect(response.statusCode).toBe(400);
     expect(response.body.status).toBe('User not found');
