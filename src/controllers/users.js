@@ -1,10 +1,13 @@
 const ApiError = require('../utils/ApiError');
 
 const { User } = require('../database/models');
-const UserSerializer = require('../serializers/UserSerializer');
+const { generateAccessToken } = require('../services/jwt');
 
-const findUser = async (userId) => {
-  const user = await User.findOne({ where: { id: userId, active: true } });
+const UserSerializer = require('../serializers/UserSerializer');
+const AuthSerializer = require('../serializers/AuthSerializer');
+
+const findUser = async (whereClause) => {
+  const user = await User.findOne({ where: Object.assign(whereClause, { active: true }) });
   if (!user) {
     throw new ApiError('User not found', 400);
   }
@@ -42,7 +45,7 @@ const getUserById = async (req, res, next) => {
   try {
     const { params } = req;
 
-    const user = await findUser(Number(params.id));
+    const user = await findUser({ id: Number(params.id) });
 
     res.json(new UserSerializer(user));
   } catch (err) {
@@ -54,7 +57,7 @@ const updateUser = async (req, res, next) => {
   try {
     const { params, body } = req;
 
-    const user = await findUser(Number(params.id));
+    const user = await findUser({ id: Number(params.id) });
 
     const userPayload = {
       username: body.username,
@@ -80,7 +83,7 @@ const deactivateUser = async (req, res, next) => {
   try {
     const { params } = req;
 
-    const user = await findUser(Number(params.id));
+    const user = await findUser({ id: Number(params.id) });
 
     Object.assign(user, { active: false });
 
@@ -92,9 +95,28 @@ const deactivateUser = async (req, res, next) => {
   }
 };
 
+const loginUser = async (req, res, next) => {
+  try {
+    const { body } = req;
+
+    const user = await findUser({ username: body.username });
+
+    if (body.password !== user.password) {
+      throw new ApiError('User not found', 400);
+    }
+
+    const accessToken = generateAccessToken(user.id);
+
+    res.json(new AuthSerializer(accessToken));
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   createUser,
   getUserById,
   updateUser,
   deactivateUser,
+  loginUser,
 };
