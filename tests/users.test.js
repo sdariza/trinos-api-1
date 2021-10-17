@@ -1,9 +1,12 @@
 const request = require('supertest');
 
 const app = require('../app');
+
+const { ROLES } = require('../src/config/constants');
+const { generateAccessToken } = require('../src/services/jwt');
+
 const database = require('../src/database');
 const { User } = require('../src/database/models');
-const { generateAccessToken } = require('../src/services/jwt');
 
 const USERS_PATH = '/users';
 
@@ -22,13 +25,20 @@ const NEW_USER = {
 
 describe('Users routes', () => {
   let firstUserAccessToken;
+  let secondUserAccessToken;
+  let adminUserAccessToken;
+
   beforeAll(async () => {
     await database.init();
 
     const firstUser = await User.create(FIRST_USER);
-    firstUserAccessToken = generateAccessToken(firstUser.id);
+    firstUserAccessToken = generateAccessToken(firstUser.id, firstUser.role);
 
-    await User.create(Object.assign(FIRST_USER, { active: false }));
+    const secondUser = await User.create(Object.assign(FIRST_USER, { active: false }));
+    secondUserAccessToken = generateAccessToken(secondUser.id, secondUser.role);
+
+    const adminUser = await User.create(Object.assign(FIRST_USER, { role: ROLES.admin }));
+    adminUserAccessToken = generateAccessToken(adminUser.id, adminUser.role);
   });
 
   it('Should create user', async () => {
@@ -137,7 +147,7 @@ describe('Users routes', () => {
     expect(response.body.data.active).toBeUndefined();
   });
 
-  it('Should return bad request on update deactivated user', async () => {
+  it('Should return unauthorized on update deactivated user', async () => {
     const USER_ID = 2;
     const payload = {
       username: 'new_username',
@@ -149,8 +159,8 @@ describe('Users routes', () => {
       .set('Authorization', `bearer ${firstUserAccessToken}`)
       .send(payload);
 
-    expect(response.statusCode).toBe(400);
-    expect(response.body.status).toBe('User not found');
+    expect(response.statusCode).toBe(403);
+    expect(response.body.status).toBe('User not authorized');
   });
 
   it('Should return bad request on update user with invalid payload', async () => {
@@ -181,14 +191,14 @@ describe('Users routes', () => {
     expect(totalUsers).toBe(1);
   });
 
-  it('Should return bad request on deactivate user when does not exist', async () => {
+  it('Should return unauthorized on deactivate user when does not exist', async () => {
     const USER_ID = 0;
     const response = await request(app)
       .delete(`${USERS_PATH}/${USER_ID}`)
       .set('Authorization', `bearer ${firstUserAccessToken}`);
 
-    expect(response.statusCode).toBe(400);
-    expect(response.body.status).toBe('User not found');
+    expect(response.statusCode).toBe(403);
+    expect(response.body.status).toBe('User not authorized');
   });
 
   it('Should login with username and password', async () => {
@@ -201,5 +211,31 @@ describe('Users routes', () => {
     expect(response.statusCode).toBe(200);
     expect(response.body.status).toBe('success');
     expect(response.body.data.accessToken).not.toBeNull();
+  });
+
+  it('Should admin role get all users', async () => {
+    const response = await request(app)
+      .get(`${USERS_PATH}/all`)
+      .set('Authorization', `bearer ${adminUserAccessToken}`);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body.status).toBe('success');
+    expect(response.body.data.length).toBe(4);
+
+    expect(response.body.data[0].createdAt).not.toBeNull();
+    expect(response.body.data[0].updatedAt).not.toBeNull();
+    expect(response.body.data[0].lastLoginDate).toBeNull();
+
+    expect(response.body.data[0].password).toBeUndefined();
+    expect(response.body.data[0].active).toBeUndefined();
+  });
+
+  it('Should return unauthorized on get all users with regular role', async () => {
+    const response = await request(app)
+      .get(`${USERS_PATH}/all`)
+      .set('Authorization', `bearer ${secondUserAccessToken}`);
+
+    expect(response.statusCode).toBe(403);
+    expect(response.body.status).toBe('Role not authorized');
   });
 });

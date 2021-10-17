@@ -9,7 +9,22 @@ function authMiddleware(req, res, next) {
   }
 
   const user = verifyAccessToken(accessToken);
+
+  const isRole = (role) => {
+    if (user.role !== role) {
+      throw new ApiError('Role not authorized', 403);
+    }
+  };
+
+  const isUserAuthorired = (userId) => {
+    if (user.id !== userId) {
+      throw new ApiError('User not authorized', 403);
+    }
+  };
+
   req.user = user;
+  req.isRole = isRole;
+  req.isUserAuthorired = isUserAuthorired;
 
   next();
 }

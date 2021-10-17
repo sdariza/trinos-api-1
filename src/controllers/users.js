@@ -5,6 +5,9 @@ const { generateAccessToken } = require('../services/jwt');
 
 const UserSerializer = require('../serializers/UserSerializer');
 const AuthSerializer = require('../serializers/AuthSerializer');
+const UsersSerializer = require('../serializers/UsersSerializer');
+
+const { ROLES } = require('../config/constants');
 
 const findUser = async (whereClause) => {
   const user = await User.findOne({ where: Object.assign(whereClause, { active: true }) });
@@ -12,6 +15,18 @@ const findUser = async (whereClause) => {
     throw new ApiError('User not found', 400);
   }
   return user;
+};
+
+const getAllUsers = async (req, res, next) => {
+  try {
+    req.isRole(ROLES.admin);
+
+    const users = await User.findAll();
+
+    res.json(new UsersSerializer(users));
+  } catch (err) {
+    next(err);
+  }
 };
 
 const createUser = async (req, res, next) => {
@@ -57,7 +72,10 @@ const updateUser = async (req, res, next) => {
   try {
     const { params, body } = req;
 
-    const user = await findUser({ id: Number(params.id) });
+    const userId = Number(params.id);
+    req.isUserAuthorired(userId);
+
+    const user = await findUser({ id: userId });
 
     const userPayload = {
       username: body.username,
@@ -83,7 +101,10 @@ const deactivateUser = async (req, res, next) => {
   try {
     const { params } = req;
 
-    const user = await findUser({ id: Number(params.id) });
+    const userId = Number(params.id);
+    req.isUserAuthorired(userId);
+
+    const user = await findUser({ id: userId });
 
     Object.assign(user, { active: false });
 
@@ -105,7 +126,7 @@ const loginUser = async (req, res, next) => {
       throw new ApiError('User not found', 400);
     }
 
-    const accessToken = generateAccessToken(user.id);
+    const accessToken = generateAccessToken(user.id, user.role);
 
     res.json(new AuthSerializer(accessToken));
   } catch (err) {
@@ -119,4 +140,5 @@ module.exports = {
   updateUser,
   deactivateUser,
   loginUser,
+  getAllUsers,
 };
