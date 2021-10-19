@@ -9,8 +9,8 @@ RUN apk add --update python make g++\
 
 COPY ./package*.json ./
 
-COPY . .
-
 RUN npm install
+
+COPY . .
 
 CMD ["npm", "run", "dev"]
