@@ -9,11 +9,14 @@ const UsersSerializer = require('../serializers/UsersSerializer');
 
 const { ROLES } = require('../config/constants');
 
-const findUser = async (whereClause) => {
-  const user = await User.findOne({ where: Object.assign(whereClause, { active: true }) });
+const findUser = async (where) => {
+  Object.assign(where, { active: true });
+
+  const user = await User.findOne({ where });
   if (!user) {
     throw new ApiError('User not found', 400);
   }
+
   return user;
 };
 
@@ -73,7 +76,7 @@ const updateUser = async (req, res, next) => {
     const { params, body } = req;
 
     const userId = Number(params.id);
-    req.isUserAuthorired(userId);
+    req.isUserAuthorized(userId);
 
     const user = await findUser({ id: userId });
 
@@ -102,7 +105,7 @@ const deactivateUser = async (req, res, next) => {
     const { params } = req;
 
     const userId = Number(params.id);
-    req.isUserAuthorired(userId);
+    req.isUserAuthorized(userId);
 
     const user = await findUser({ id: userId });
 

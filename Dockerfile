@@ -1,5 +1,7 @@
 FROM node:fermium-buster-slim
 
+ENV NODE_ENV=production
+
 WORKDIR /usr/src/app
 
 EXPOSE 3000
@@ -12,4 +14,4 @@ RUN npm install
 
 COPY . .
 
-CMD ["npm", "run", "dev"]
+CMD ["npm", "run", "start"]
