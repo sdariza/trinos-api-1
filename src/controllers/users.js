@@ -21,9 +21,9 @@ const getAllUsers = async (req, res, next) => {
   try {
     req.isRole(ROLES.admin);
 
-    const users = await User.findAll();
+    const users = await User.findAll({ ...req.pagination });
 
-    res.json(new UsersSerializer(users));
+    res.json(new UsersSerializer(users, await req.getPaginationInfo(User)));
   } catch (err) {
     next(err);
   }
@@ -122,7 +122,7 @@ const loginUser = async (req, res, next) => {
 
     const user = await findUser({ username: body.username });
 
-    if (body.password !== user.password) {
+    if (!(await user.comparePassword(body.password))) {
       throw new ApiError('User not found', 400);
     }
 
