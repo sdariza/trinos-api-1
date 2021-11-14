@@ -3,7 +3,7 @@ name: Build and Deploy
 on:
   push:
     branches:
-    - master
+      - master
 
 jobs:
   build:
@@ -21,4 +21,3 @@ jobs:
             NODE_ENV
         env:
           NODE_ENV: production
-
